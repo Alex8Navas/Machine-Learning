@@ -1,0 +1,447 @@
+---
+title: "<div style='text-align:center;'>**Algoritmo de Naive Bayes**</div>"
+author: "<div style='text-align:center;'>**Alejandro Navas González**</div>"
+date: '<div style="text-align:center;"> **Fecha: `r format(Sys.Date(),"%e de %B, %Y")`** <div style="text-align:center;">' 
+output:
+  pdf_document:
+    latex_engine: xelatex
+    highlight: pygments
+    df_print: paged
+    keep_tex: FALSE
+    toc: TRUE
+    toc_depth: 6
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_depth: 6
+    toc_float: true
+    theme: spacelab
+nocite: |
+  @lantz2015machine
+params:
+  file1: flowering_time_Bayes.csv
+  file2: genotype.csv
+  folder.data: ./data
+  p.train: 2/3
+bibliography: ./data/pec1.BIB
+lang: en
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, 
+                      comment = NA, prompt = FALSE, tidy.opts=list(width.cutoff=80), tidy = TRUE)
+```
+
+\newpage
+
+## **Introducción al Proyecto**
+
+### **Marco de Datos**
+
+<p style="text-align:justify;">
+Se conoce el genotipo de 697 plantas y su momento de floración en días. El fichero **floweringTime.zip** contiene:
+</p>
+
+<div style="text-align:justify;">
++ **genotype.csv**: Es el genotipo para cada planta (697 x 149). Hay tres posibles estados como máximo: 0, 1 y 2 que se corresponden con *Homocigoto dominante*, *Heterocigoto* y *Homocigoto recesivo*, respectivamente.
++ **flowering_time.csv**: Es el tiempo transcurrido hasta la floración en días para cada planta (697 x 1).
+</div>
+
+### **Objetivo**
+
+<p style="text-align:justify;">
+El objetivo marcado en este trabajo es la predicción del tipo de floración (rápida o lenta) en función del genotipo de la planta.
+</p>
+
+### **Procedimiento**
+
+<p style="text-align:justify;">
+Para resolver este problema se realizará un informe dinámico donde se aplicarán los mismos pasos que se siguieron para el algoritmo k-NN. El informe comenzará con un índice y una sección que incluya la tabla de fortalezas y debilidades del algoritmo Naive Bayes y una explicación del mismo. A continuación, ya se plantea la resolución del problema con el algoritmo de Naive Bayes aplicando los pasos que sugiere realizar en su obra Brett Lantz con el marco de datos del spam.
+</p>
+
+### **Información Importante**
+
+<div style="text-align:justify;">
++ Floración rápida es cuando el número de días trascurrido hasta la floración es menor o igual a 40 días, en caso contrario es floración lenta. Se codifica la floración rápida como 0 y la floración lenta como 1.
++ El dataset se dividirá en dos tercios para el marco de datos training y el tercio restante para el marco de datos de prueba. Para utilizar la misma serie de registros de training y de test usar como semilla inicial el valor de *set.seed(12345)*.
++ Para evaluar el rendimiento del modelo se usará la función *confusionMatrix()* del paquete **caret**, que da más información. La **categoría positiva** es **floración lenta**.
++ Se debe probar el modelo de Naive Bayes con laplace=0 y laplace=1.
++ Crear un nuevo apartado titulado “Curvas ROC” donde se obtengan las curvas ROC para el modelo de Naive Bayes con laplace=0 y laplace= 1 y el área bajo la curva. Recordar que el package ROCR sirve para hacer las curvas ROC (ver Unidad 3). Importante: Usar el argumento **type =”raw”** de la función *predict()* para obtener las probabilidades.
+</div>
+
+## **Introducción al Algoritmo de Naive Bayes**
+
+<p style="text-align:justify;">
+El algoritmo de **Naive Bayes** se fundamenta en los conocidos como **métodos bayesianos**, un conjunto de principios matemáticos fundamentales desarrollados por [**Thomas Bayes**](https://es.wikipedia.org/wiki/Thomas_Bayes){target="_blank"} cuyo fin es la descripción de eventos probabilísticos. Sobre esta base los clasificadores basados en los métodos bayesianos utilizan datos de entrenamiento para calcular una probabilidad observada de cada clase basada en los valores de las variables. Cuando el clasificador se utiliza posteriormente en datos no etiquetados, utiliza las probabilidades observadas para predecir la clase más probable de los nuevos datos dados para estas variables; y es esta simple idea la que da lugar a un método que a menudo tiene resultados similares a los ofrecidos por algoritmos más sofisticados. De hecho, se han utilizado clasificadores bayesianos para:
+</p>
+
+<div style="text-align:justify;">
++ La clasificación de textos, como el filtrado de correo basura (spam), la identificación de autores o la categorización de temas. 
++ La detección de intrusos o la detección de anomalías en las redes informáticas. 
++ El diagnóstico de las condiciones médicas mediante conjuntos de síntomas observados. 
+</div>
+
+
+<p style="text-align:justify;">
+Típicamente, los clasificadores bayesianos se aplican mejor a los problemas en los que la información de numerosos atributos debe considerarse simultáneamente para estimar la probabilidad de un resultado. Mientras que muchos algoritmos ignoran aquellas características que tienen efectos débiles, los métodos bayesianos utilizan todas las pruebas disponibles para cambiar sutilmente las predicciones. Si un gran número de variables tienen efectos relativamente menores, en conjunto, su impacto combinado podría ser considerable. 
+</p>
+
+
+
+### **Fortalezas & Debilidades**
+
+<p style="text-align:justify;">
+El **algoritmo de Naive Bayes** (**NB**) describe así una aplicación de los métodos bayesianos simple para la clasificación. Si bien no es el único método de aprendizaje automático que se fundamenta en el [**Teorema de Bayes**](https://es.wikipedia.org/wiki/Teorema_de_Bayes){target="_blank"}, sí que es el más común, en particular para la clasificación de textos, donde se ha convertido en la norma de facto. Sus fortalezas y deblidades son las siguientes: 
+</p>
+
+<div style="text-align:justify;">
+| **Fortalezas** | **Debilidades** |
+-- | --
+| Es simple, rápido y muy efectivo | Se basa en una suposición a menudo errónea de características igualmente importantes e independientes |
+| Funciona bien con los datos ruidosos y faltantes | No es ideal para conjuntos de datos con gran número de características numéricas | 
+| Requiere de relativamente pocos sujetos para el entrenamiento, y también funciona bien para un gran número de éstos | Las probabilidades estimadas son menos fiables que las clases previstas 
+| Es fácil obtener la probabilidad estimada de una predicción |   | 
+</div>
+
+<p style="text-align:justify;">
+Así, el algoritmo de Naive Bayes recibe tal nombre porque hace un par de suposiciones "ingenuas" (*naive*) sobre los datos. En particular, el Naive Bayes asume que todas las características del conjunto de datos son igualmente importantes e independientes. Estos supuestos rara vez son verdaderos en el mundo real. Sin embargo, en la mayoría de los casos, a pesar de que se violen estas suposiciones, el Naive Bayes se desempeña bastante bien. Esto es cierto incluso en circunstancias extremas donde se encuentran fuertes dependencias entre las variables predictoras. De este modo, dadas la versatilidad y precisión de este algoritmo en muchos tipos de condiciones, Naive Bayes es a menudo un fuerte candidato inicial para las tareas de aprendizaje de clasificación. La razón por la que el Naive Bayes funciona bien a pesar de sus suposiciones erróneas ha sido objeto de gran especulación. Una explicación es que no es importante obtener una estimación cuidadosa de la probabilidad mientras los valores de la clase predichos sean verdaderos.
+</p>
+
+
+
+### **El Estimador de Laplace**
+
+<p style="text-align:justify;">
+El algoritmo de Naive Bayes presenta un problema importante que surge si un evento nunca ocurre para uno o más niveles de la clase, y es que, debido a que las probabilidades en los algoritmos de Naive Bayes se multiplican, un valor del cero por ciento causa que la probabilidad posterior de que se de x suceso sea cero, lo que da a este evento nulo la capacidad para anular y dominar efectivamente sobre todas las demás evidencias.
+</p>
+
+<p style="text-align:justify;">
+Una solución a este problema consiste en el uso de un elemento conocido como el **Estimador de Laplace**, que lleva el nombre del matemático francés **Pierre-Simon Laplace**. El estimador de Laplace lo que hace es añadir un pequeño número, una cifra residual, a cada uno de los recuentos realizados en la frecuencia, lo que asegura que cada característica tiene una probabilidad no nula de ocurrir con cada clase. Típicamente, el estimador de Laplace se fija en 1, lo que asegura que cada combinación de clases y características se encuentra en los datos al menos una vez.
+</p>
+
+<p style="text-align:justify;">
+El estimador de Laplace se puede ajustar a cualquier valor, y no necesariamente tiene que ser el mismo para cada una de las características. Se podría usar el estimador de Laplace para reflejar una presunta probabilidad *a priori* de cómo la característica se relaciona con la clase. En la práctica, dado un conjunto de datos de entrenamiento lo suficientemente grande, este paso es innecesario, y casi siempre se utiliza el valor de uno. 
+</p>
+
+### **Naive Bayes para Variables Cuantitativas**
+
+<p style="text-align:justify;">
+Puesto que el Naive Bayes utiliza tablas de frecuencia para el aprendizaje, cada característica debe ser categórica a fin de crear las combinaciones de valores de clase y característica que componen la matriz. Como los rasgos numéricos no tienen categorías de valores, este algoritmo no funciona directamente con los datos numéricos. Sin embargo, hay formas de abordar esta cuestión.
+</p>
+
+<p style="text-align:justify;">
+Una solución fácil y eficaz es la de **discretizar** las variables numéricas, lo que significa simplemente que los números se colocan en categorías conocidas como contenedores (**bins**). Por esta razón, la discretización también se denomina a veces "*binning*". Este método es ideal cuando hay grandes cantidades de datos de entrenamiento, una condición común cuando se trabaja con Naive Bayes.
+</p>
+
+<p style="text-align:justify;">
+Hay varias maneras de discretizar una variable numérica. La más común es explorar los datos para las categorías naturales o los puntos de corte en la distribución de los datos. La elección de los puntos de corte y el establecimiento del tipo y número de bins es arbitraria. De hecho, si no hay puntos de corte obvios, una opción es discretizar la variable mediante el uso de cuantiles, dividiendo tal que así los datos en tres bins con tertiles, cuatro bins con cuartiles, cinco bins con quintiles, etcétera.
+</p>
+
+<p style="text-align:justify;">
+Por último, una cuestión que hay que tener en consideración es que la **discretización** de una variable numérica siempre da lugar a una reducción de la información, ya que la **granularidad** original de la variable se reduce a un conjunto de categorías. Es importante lograr un equilibrio, es decir, un número demasiado reducido de bins puede dar lugar a que se oculten tendencias importantes, mientras que un número demasiado elevado de bins puede dar lugar a recuentos pequeños en la tabla de frecuencias de Naive Bayes, luego es preciso buscar un punto medio entre ambas situaciones.
+</p>
+
+## **Naive Bayes & la Floración**
+
+### **Recolección de los Datos**
+
+<p style="text-align:justify;">
+Se importan dos ficheros. Uno es genotype.csv, que contiene 697 genotipos de plantas en el que se recogen 149 genes, que pueden tomar los valores 0, 1 y 2 si son *homocigoto dominante*, *heterocigoto* y *homocigoto recesivo*, respectivamente. El otro fichero a importar es flowering_time.csv, que recoge el tiempo transcurrido hasta la floración en días para cada uno de los sujetos del primer fichero. Se recurre a la función *read.csv()* para importar ambos ficheros.
+</p>
+
+```{r }
+
+Flower<-read.csv(file.path(params$folder.data, params$file1), stringsAsFactors = TRUE)
+Genotypes<-read.csv(file.path(params$folder.data, params$file2), stringsAsFactors = TRUE)
+
+
+```
+
+### **Exploración & Preparación**
+
+<p style="text-align:justify;">
+La primera etapa del análisis para construir un clasificador de Bayes consiste en el procesamiento de los raw data o datos crudos para realizar el análisis. Esto es de especial relevancia en el análisis de textos.  
+</p>
+
+#### **Análisis del Marco de Datos sobre la Floración**
+
+<p style="text-align:justify;">
+En primer lugar, se verifica que el marco de datos importado se corresponda con lo que se ha descrito previamente, para lo cual se utilizan las funciones *dim()* y *str()*. A continuación, se crea una variable para clasificar la floración de tal modo que si el sujeto tarda 40 días o menos en florecer se dice que la floración es rápida (*Fast*), y si la floración tarda más de 40 días se tendrá una floración lenta (*Slow*). Se vuelve a explorar el marco de datos con las mismas funciones para ver que la variable creada, a saber, Flowering, tiene coherencia con lo que se pretende realizar y se mira mediante las funciones *table()* y *prop.table()* cuántos de los sujetos tienen floración temprana y cuántos tienen floración tardía. 
+</p>
+
+```{r }
+ 
+dim(Flower)
+str(Flower)
+names(Flower)<-c("Days")
+head(Flower)
+Flower$Flowering<-NA
+for (i in 1:length(Flower$Days)){
+  if (Flower$Days[i]<=40){
+    Flower$Flowering[i]<-"Fast"
+  } else{
+    Flower$Flowering[i]<-"Slow"
+  }
+}
+Flower$Flowering<-factor(Flower$Flowering)
+dim(Flower)
+str(Flower)
+head(Flower)
+table(Flower$Flowering)
+prop.table(table(Flower$Flowering))
+
+```
+
+#### **Análisis del Marco de Datos sobre los Genotipos**
+
+<p style="text-align:justify;">
+
+</p>
+
+```{r }
+
+dim(Genotypes)
+str(Genotypes)
+for (i in 1:ncol(Genotypes)){
+  Genotypes[,i]<-factor(Genotypes[,i])
+}
+str(Genotypes)
+
+
+```
+
+#### **Creación de los Marcos de Entrenamiento & Prueba**
+
+<p style="text-align:justify;">
+El siguiente paso es crear los marcos de entrenamiento (para construir el modelo) y el de prueba (para su evaluación). Para estos marcos de datos, dos tercios de se destinarán al primer conjunto y el tercio restante al de testeo. Se verifica en cada caso mediante la función *table()* que los porcentajes de floración son similares en ambos conjuntos creados a partir del marco que trata la floración. En este caso los sujetos se encuentran ordenados en los marcos de floración y genotipos, es decir, se sabe que el sujeto 1 del marco de la floración es también el sujeto 1 del marco de genotipos. Si la situación no fuera tal habría de hacerse *merge()* por el ID de los sujetos, y crear un marco común a partir del cual crear los marcos de entrenamiento y prueba. 
+</p>
+
+```{r }
+# Se establece una semilla de pseudoaleatorización. 
+set.seed(12345)
+
+# Se crean los marcos de entrenamiento y prueba para el marco de floración.  
+Flower.Train<-Flower[1:465, ]
+Flower.Test<-Flower[465:696, ]
+
+dim(Flower.Train)
+dim(Flower.Test)
+
+table(Flower.Train$Flowering)
+table(Flower.Test$Flowering)
+
+prop.table(table(Flower.Train$Flowering))
+prop.table(table(Flower.Test$Flowering))
+
+# Se crean los marcos de entrenamiento y prueba para el marco de genotipos. 
+Genotypes.Train<-Genotypes[1:465, ]
+Genotypes.Test<-Genotypes[465:696, ]
+
+```
+
+### **Entrenamiento del Modelo** 
+
+<p style="text-align:justify;">
+La implementación de Naive Bayes que se empleará para este estudio se encuentra en el paquete **e1701**. Este paquete fue desarrollado en el departamento de estadística de la **Universidad Tecnológica de Viena** (TU Wien), e incluye una variedad de funciones para machine learning. Existen otras alternativas como la función *NaiveBayes()* del paquete **klaR**, que es prácticamente idéntica a la aproximación que se va a aplicar con el paquete **e1701**. 
+</p>
+
+<p style="text-align:justify;">
+A diferencia del algoritmo k-NN, la fase de entrenamiento y la de clasificación en Naive Bayes transcurren en diferentes etapas. Entonces, primero, se lleva a cabo la construcción del modelo mediante la función *naiveBayes()* del paquete **e1701**, que toma por parámetros el marco de datos de los genotipos reservados para el entrenamiento, y los datos de floración de estos sujetos, que se encuentran en el marco de entrenamiento de la floración. 
+</p>
+
+```{r message=FALSE, warning=FALSE}
+
+library(e1071)
+Flower.Bayes <- naiveBayes(Genotypes.Train, Flower.Train$Flowering)
+
+```
+
+<p style="text-align:justify;">
+El objeto creado se almacena en una variable, llamada en este caso Flower.Bayes, que contendrá un objeto *naiveBayes* que servirá para realizar una predicción. 
+</p>
+
+### **Evaluación del Modelo**
+
+<p style="text-align:justify;">
+Para la evaluación del modelo Naive Bayes creado se requiere de hacer una predicción con el marco de datos de prueba de los genotipos mediante la función *predict()*, que tomará como parámetros el modelo creado y el mencionado marco de datos. 
+</p>
+
+```{r }
+
+Bayes.Pred <- predict(Flower.Bayes, Genotypes.Test)
+
+
+```
+
+<p style="text-align:justify;">
+Para comparar los valores que se han predicho con los valores que se hallan realmente en el marco de prueba se puede recurrir entre otros, a la función *CrossTable()*, del paquete **gmodels**. Se añaden parámetros adicionales como FALSE para eliminar valores innecesarios en las celdas, y se utiliza el parámetro *dnn* para renombrar las filas y columnas de la matriz de confusión. 
+</p>
+
+```{r message=FALSE, warning=FALSE}
+
+library(gmodels)
+Kross1<-CrossTable(Bayes.Pred, Flower.Test$Flowering, prop.chisq = FALSE, prop.t = FALSE, dnn = c('Predicted', 'Actual'))
+
+```
+
+### **Mejora del Modelo**
+
+<p style="text-align:justify;">
+Como se observa, y si se considera la floración tardía como la variable positiva, se han obtenido 37 falsos negativos y 20 falsos positivos sobre un total de 232 sujetos analizados. Es una tasa de error alta, luego conviene implementar estrategias para la mejora del modelo. Para ello, se recurre al estimador de Laplace, estableciendo para este un valor de 1. Se realiza la predicción y se crea la tabla de confusión. 
+</p>
+
+```{r message=FALSE, warning=FALSE}
+
+Flower.Bayes2 <- naiveBayes(Genotypes.Train, Flower.Train$Flowering, laplace = 1)
+Bayes2.Pred <- predict(Flower.Bayes2, Genotypes.Test)
+Kross2<-CrossTable(Bayes2.Pred, Flower.Test$Flowering, prop.chisq = FALSE, prop.t = FALSE, dnn = c('Predicted', 'Actual'))
+
+```
+
+<p style="text-align:justify;">
+Se ha disminuido el número de falsos negativos de 37 a 34, pero el número de falsos positivos ha aumentado de 20 a 21. Se prueba con otro valor para el estimador de laplace, como 2, pero se observa que la diferencia respecto a aplicar un laplace de 1 es mínima, si bien en este caso no aumenta el número de falsos positivos, luego si hubiera de elegirse entre uno de los tres modelos, se escogería este tercero. 
+</p>
+
+```{r }
+
+Flower.Bayes3 <- naiveBayes(Genotypes.Train, Flower.Train$Flowering, laplace = 2)
+Bayes3.Pred <- predict(Flower.Bayes3, Genotypes.Test)
+Kross3<-CrossTable(Bayes3.Pred, Flower.Test$Flowering, prop.chisq = FALSE, prop.t = FALSE, dnn = c('Predicted', 'Actual'))
+
+```
+
+<p style="text-align:justify;">
+Se pueden comparar los resultados obtenidos por *CrossTable()* mediante la siguiente función, *EvalNaiveBayes()*, que es de cosecha propia, la cual toma como parámetro un objeto devuelto por la función *CrossTable()* y calcula su precisión, tasa de error, valor kappa, sensibilidad, especificidad, recall, valor predictivo positivo y F-Measure. Es preciso recalcar que solamente es válida para un objeto creado mediante *CrossTable()*.
+</p>
+
+```{r echo=FALSE}
+
+EvalNaiveBayes<-function(lista){
+  cat("En el modelo de Naive Bayes utilizado se ha encontrado que:\n")
+  cat("    > Los verdaderos positivos son: ", lista$t[4], ".\n", sep = "")
+  cat("    > Los falsos negativos encontrados son: ", lista$t[3], ".\n", sep = "")
+  cat("    > Los verdaderos negativos son: ", lista$t[1], ".\n", sep = "")
+  cat("    > Los falsos positivos hallados son: ", lista$t[2], ".\n\n", sep = "")
+  cat("Evaluación del modelo de Naive Bayes:\n")
+  Prec<-(lista$t[4]+lista$t[1])/(lista$t[4]+lista$t[3]+lista$t[2]+lista$t[1])
+  cat("    > La precisión del modelo es ", Prec, ".\n", sep = "")
+  ErrorR<-(lista$t[2]+lista$t[3])/(lista$t[1]+lista$t[2]+lista$t[3]+lista$t[4])
+  cat("    > La tasa de error del modelo es ", ErrorR, ".\n", sep = "")
+  Pra<-Prec
+  Pre<-((lista$t[1]+lista$t[2])/(lista$t[1]+lista$t[2]+lista$t[3]+lista$t[4]))*((lista$t[1]+lista$t[3])/(lista$t[1]+lista$t[2]+lista$t[3]+lista$t[4]))+
+    ((lista$t[3]+lista$t[4])/(lista$t[1]+lista$t[2]+lista$t[3]+lista$t[4]))*((lista$t[2]+lista$t[4])/(lista$t[1]+lista$t[2]+lista$t[3]+lista$t[4]))
+  kappaR<-(Pra-Pre)/(1-Pre)
+  cat("    > El valor de Kappa del modelo es ", kappaR, ".\n", sep = "")
+  Sensibilidad<-lista$t[4]/(lista$t[4]+lista$t[3])
+  cat("    > La sensibilidad del modelo es ", Sensibilidad, ".\n", sep = "")
+  Especificidad<-lista$t[1]/(lista$t[2]+lista$t[1])
+  cat("    > La especificidad del modelo es ", Especificidad, ".\n", sep = "")
+  Recall<-Sensibilidad
+  cat("    > El recall del modelo es ", Recall, ".\n", sep = "")
+  Precision<-lista$t[4]/(lista$t[4]+lista$t[2])
+  cat("    > El valor predictivo positivo es ", Precision, ".\n", sep = "")
+  F.Measure<-(2*lista$t[4])/(2*lista$t[4]+lista$t[2]+lista$t[3])
+  cat("    > La medida F del modelo es ", F.Measure, ".\n", sep = "")
+  FN<-lista$t[3]
+  FP<-lista$t[2]
+  Marco<-data.frame(matrix(c(Prec, ErrorR, FP, FN, kappaR, Sensibilidad, Especificidad, Recall, Precision, F.Measure), ncol=10))
+}
+
+```
+
+```{r }
+
+KrossA<-EvalNaiveBayes(Kross1)
+KrossB<-EvalNaiveBayes(Kross2)
+KrossC<-EvalNaiveBayes(Kross3)
+
+
+```
+
+```{r }
+
+BayesDF<-rbind(KrossA, KrossB, KrossC)
+colnames(BayesDF)<-c("Accuracy","Error", "Falsos Positivos", "Falsos Negativos", "Valor Kappa","Sensibilidad", "Especificidad", "Recall", "Precisión", "Medida-F")
+rownames(BayesDF)<-c("Sin Laplace", "Laplace 1", "Laplace 2")
+BayesDF
+
+```
+
+### **Curvas ROC**
+
+<p style="text-align:justify;">
+Otra opción interesante para la evaluación de los modelos creados es la conocida como **curva ROC** (*Receiver Operating Characteristic*), la cual se utiliza comúnmente para examinar el equilibrio entre la detección de los verdaderos positivos y la evasión de los falsos positivos. Se utiliza para visualizar la eficacia de los modelos de aprendizaje de las máquinas. Las características de un diagrama ROC típico es presentar la proporción de verdaderos positivos en el eje vertical, y la proporción de falsos positivos en el eje horizontal. Estos valores son equivalentes a la sensibilidad y a (1 - especificidad), respectivamente. Por ello, el diagrama es también conocido como un gráfico de sensibilidad/especificidad.
+</p>
+
+<p style="text-align:justify;">
+Los puntos que comprenden las curvas ROC indican la tasa positiva verdadera frente a un umbral variable de la tasa de falsos positivos. Para crear las curvas, las predicciones de un clasificador se ordenan por la probabilidad estimada del modelo de la clase positiva, con los valores más grandes primero. Partiendo del origen, el impacto de cada predicción en la tasa positiva verdadera y en la tasa de falsos positivos resultará en un trazado de la curva en forma vertical (para una predicción correcta), u horizontalmente (para una predicción incorrecta).
+</p>
+
+<p style="text-align:justify;">
+Para ilustrar este concepto, se contrastan tres hipotéticos clasificadores en la gráfica de la curva ROC. En primer lugar, la línea diagonal desde la esquina inferior izquierda a la superior derecha del diagrama representa un clasificador sin valor de predicción. Este tipo de clasificador detecta los verdaderos positivos y los falsos positivos exactamente al mismo ritmo, lo que implica que el clasificador no puede discriminar entre ambos. Esta es la línea de base por la que se puede juzgar a otros clasificadores; las curvas ROC que caen cerca de esta línea indican modelos que no son muy útiles. De manera similar, el clasificador perfecto tiene una curva que pasa por el punto a una tasa de 100% de verdaderos positivos y 0% de falsos positivos. Es capaz de identificar correctamente todos los verdaderos positivos antes de clasificar incorrectamente cualquier resultado negativo. La mayoría de los clasificadores del mundo real son similares al clasificador de prueba; caen en algún lugar de la zona entre perfecto e inútil. Así, cuanto más cerca esté la curva del clasificador perfecto, mejor será la identificación de los valores positivos. Esto puede medirse usando una estadística conocida como el área bajo la curva ROC (**AUC**). El AUC trata el diagrama ROC como un cuadrado bidimensional y mide el área total bajo la curva ROC, yendo así desde 0,5 (para un clasificador sin valor predictivo), hasta 1.0 (para un clasificador perfecto). Una convención para interpretar las puntuaciones de la AUC es el siguiente sistema: 
+</p>
+
+<div style="text-align:justify;">
+- 0.9 – 1.0 = A (Sobresaliente)
+- 0.8 – 0.9 = B (Excelente/Bueno)
+- 0.7 – 0.8 = C (Aceptable/Justo)
+- 0.6 – 0.7 = D (Pobre)
+- 0.5 – 0.6 = E (No hay discriminación)
+</div>
+
+<p style="text-align:justify;">
+Para cada modelo creado se realiza la curva ROC y se muestra además el AUC. Para la creación de curvas ROC se recurre al paquete **ROCR**, que permite la construcción de un objeto de rendimiento para el objeto de predicción calculado previamente mediante la función *prediction()*. Puesto que las curvas ROC trazan verdaderas tasas positivas frente a tasas falsas positivas, simplemente se llama a la función *performance()* especificando las medidas tpr y fpr. Con el objeto resultante de *performance()*, se visualiza la curva ROC con la función *plot()*. Se traza la diagonal mediante la función *abline()* fijando la intercepción en cero y considerando una pendiente de uno, y se especifica también que la recta sea discontinua. 
+</p> 
+
+```{r message=FALSE, warning=FALSE}
+library("ROCR")
+par(mfrow=c(1,2))
+Pred.Prob<-predict(Flower.Bayes, Genotypes.Test, type = "raw")
+Pred.Prob<-as.data.frame(Pred.Prob)
+pred <- prediction(predictions= Pred.Prob$Slow, labels= Flower.Test$Flowering)
+perf <- performance(pred, measure = "tpr", x.measure = "fpr")
+perf.auc <- performance(pred, measure="auc")
+perf.auc <- unlist(perf.auc@y.values)
+plot(perf, colorize=TRUE, lwd=2, main=paste("ROC.No Laplace. AUC=", round(perf.auc,3)))
+abline(a = 0, b = 1, lwd = 1, lty = 2)
+plot(perf, avg="threshold", colorize=TRUE, lwd=2, main=paste("ROC. No Laplace. AUC=", round(perf.auc,3)))
+abline(a = 0, b = 1, lwd = 1, lty = 2)
+
+```
+
+```{r}
+par(mfrow=c(1,2))
+Pred.Prob<-predict(Flower.Bayes2, Genotypes.Test, type = "raw")
+Pred.Prob<-as.data.frame(Pred.Prob)
+pred <- prediction(predictions= Pred.Prob$Slow, labels= Flower.Test$Flowering)
+perf <- performance(pred, measure = "tpr", x.measure = "fpr")
+perf.auc <- performance(pred, measure="auc")
+perf.auc <- unlist(perf.auc@y.values)
+plot(perf, colorize=TRUE, lwd=2, main=paste("ROC. Laplace 1. AUC=", round(perf.auc,3)))
+abline(a = 0, b = 1, lwd = 1, lty = 2)
+plot(perf, avg="threshold", colorize=TRUE, lwd=2, main=paste("ROC. Laplace 1. AUC=", round(perf.auc,3)))
+abline(a = 0, b = 1, lwd = 1, lty = 2)
+
+```
+
+```{r}
+par(mfrow=c(1,2))
+Pred.Prob<-predict(Flower.Bayes3, Genotypes.Test, type = "raw")
+Pred.Prob<-as.data.frame(Pred.Prob)
+pred <- prediction(predictions= Pred.Prob$Slow, labels= Flower.Test$Flowering)
+perf <- performance(pred, measure = "tpr", x.measure = "fpr")
+perf.auc <- performance(pred, measure="auc")
+perf.auc <- unlist(perf.auc@y.values)
+plot(perf, colorize=TRUE, lwd=2, main=paste("ROC. Laplace 2. AUC=", round(perf.auc,3)))
+abline(a = 0, b = 1, lwd = 1, lty = 2)
+plot(perf, avg="threshold", colorize=TRUE, lwd=2, main=paste("ROC. Laplace 2. AUC=", round(perf.auc,3)))
+abline(a = 0, b = 1, lwd = 1, lty = 2)
+
+```
+
+<p style="text-align:justify;">
+Como se puede observar, la ROC mejora al utilizar el estimador de Laplace, y esto no solamente se observa en la gráfica, sino que se manifiesta en el valor del AUC, que aumenta en una centésima aproximadamente. 
+</p>
+
+## **Bibliografía**
