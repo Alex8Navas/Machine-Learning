@@ -4,10 +4,10 @@ library(tidyverse)
 library(ggplot2)
 library(caret)
 
-# emilla sde pseudoaleatorización: 
+# Semilla sde pseudoaleatorización: 
 set.seed(1234)
 
-# Una capa oculta con cinco neuronas. 
+# Una capa oculta con doce neuronas. 
 # Funciones de activación a utilizar: tanh y la sigmoide. 
 
 # Marco de datos a cargar: 
